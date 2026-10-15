@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>秋招管家</title>
+<script>
+// 直接双击 index.html 打开时（file:// 协议），样式和接口都会失效。
+// 这里用内联脚本拦住，给出明确的正确用法，避免看到一个"坏掉的半成品"。
+(function () {
+  if (location.protocol !== 'file:') return;
+  document.addEventListener('DOMContentLoaded', function () {
+    document.body.innerHTML = [
+      '<div style="max-width:640px;margin:80px auto;padding:32px 36px;border:2px solid #e5484d;',
+      'border-radius:16px;font:15px/1.9 -apple-system,\'Microsoft YaHei\',sans-serif;color:#12141a;background:#fff">',
+      '<div style="font-size:22px;font-weight:700;margin-bottom:14px">⚠️ 打开方式不对</div>',
+      '<p style="margin:0 0 12px">你现在是<strong>直接打开了网页文件</strong>，这种方式下程序的后台服务没有启动，',
+      '所以页面没有样式、按钮也点不动。</p>',
+      '<p style="margin:0 0 12px">正确做法：回到项目文件夹 <code>E:\\工作\\qiuzhao</code>，',
+      '<strong>双击 <code>启动.bat</code></strong>。它会自动启动后台服务并打开浏览器。</p>',
+      '<p style="margin:0 0 12px">如果双击后浏览器地址是 <code>127.0.0.1:8760</code>，那就说明启动成功了。</p>',
+      '<p style="margin:0;color:#8b93a1;font-size:13px">注意：不要直接打开 app\\web\\index.html，也不要把它拖进浏览器。</p>',
+      '</div>',
+    ].join('');
+  });
+})();
+</script>
+<link rel="stylesheet" href="/web/style.css" />
+</head>
+<body>
+<aside class="sidebar">
+  <div class="brand">
+    <span class="brand-mark">秋</span>
+    <div class="brand-text">
+      <strong>秋招管家</strong>
+      <small>上传简历 → 找岗位 → 记录投递</small>
+    </div>
+  </div>
+  <nav class="nav" id="nav">
+    <button class="nav-item active" data-view="jobs"><span class="ico">🔍</span>找岗位</button>
+    <button class="nav-item" data-view="resume"><span class="ico">📄</span>简历与资料</button>
+    <button class="nav-item" data-view="apps"><span class="ico">📬</span>投递记录</button>
+    <button class="nav-item" data-view="system"><span class="ico">⚙️</span>运行与设置</button>
+  </nav>
+  <div class="sidebar-foot">
+    <div class="foot-line" id="foot-line">数据全部保存在本机</div>
+  </div>
+</aside>
+
+<main class="main">
+  <div class="offline-bar" id="offline-bar" hidden>
+    <span id="offline-text"></span>
+    <button class="btn tiny" id="btn-reconnect">重试连接</button>
+  </div>
+  <header class="topbar">
+    <div class="search">
+      <span class="search-ico">⌕</span>
+      <input id="q" placeholder="搜索岗位名称、公司…" />
+    </div>
+    <div class="topbar-actions">
+      <select id="collect-source" title="从哪个渠道找新岗位">
+        <option value="all">全部渠道</option>
+        <option value="guopin">国聘（央企国企）</option>
+        <option value="ncss">24365 国家平台（民企/国企）</option>
+        <option value="bigtech">大厂校招官网</option>
+        <option value="workday">外企官网</option>
+        <option value="wechat">公众号校招公告</option>
+      </select>
+      <button id="btn-collect" class="btn primary">找新岗位</button>
+      <button id="btn-export" class="btn ghost">导出 Excel</button>
+    </div>
+  </header>
+
+  <section class="view active" id="view-jobs">
+    <div class="chips" id="quick-chips"></div>
+    <div class="hero" id="hero"></div>
+
+    <div class="filterbar" id="filterbar">
+      <label class="field">城市
+        <select id="f-city"><option value="">全部城市</option></select>
+      </label>
+      <label class="field">岗位职能
+        <select id="f-function"><option value="">全部职能</option></select>
+      </label>
+      <label class="field">学历
+        <select id="f-degree"><option value="">学历不限</option></select>
+      </label>
+      <label class="field">类型
+        <select id="f-jobtype"><option value="">类型不限</option></select>
+      </label>
+      <label class="field">排序
+        <select id="f-sort">
+          <option value="smart">推荐（对口优先）</option>
+          <option value="score">只看匹配分</option>
+          <option value="deadline">截止时间最近</option>
+          <option value="published">最新发布</option>
+          <option value="salary">薪资从高到低</option>
+        </select>
+      </label>
+      <label class="switch"><input type="checkbox" id="f-open" /> 只看还能投的</label>
+      <button class="btn ghost tiny" id="btn-more-filter">更多筛选 ▾</button>
+      <button class="btn ghost tiny" id="btn-clear">清空筛选</button>
+    </div>
+
+    <div class="filterbar advanced" id="filterbar2" hidden>
+      <label class="field">城市手输
+        <input id="f-city-text" placeholder="如：东营" style="width:110px" />
+      </label>
+      <label class="field">行业赛道
+        <select id="f-track"><option value="">全部赛道</option></select>
+      </label>
+      <label class="field">销售类型
+        <select id="f-sales"><option value="">全部销售类型</option></select>
+      </label>
+      <label class="field">复核状态
+        <select id="f-review">
+          <option value="">全部</option>
+          <option value="pending">已确认对口</option>
+          <option value="need_review">待人工复核</option>
+          <option value="excluded">已排除</option>
+          <option value="kept">我保留的</option>
+        </select>
+      </label>
+      <label class="field">外派情况
+        <select id="f-overseas">
+          <option value="">不限</option>
+          <option value="mandatory_overseas_assignment">强制境外驻派</option>
+          <option value="long_term_assignment">长期外派</option>
+          <option value="short_term_assignment">短期外派</option>
+          <option value="travel_only">仅海外出差</option>
+          <option value="not_mentioned">未提及外派</option>
+        </select>
+      </label>
+      <label class="field">数据来源
+        <select id="f-source"><option value="">全部来源</option></select>
+      </label>
+      <label class="switch"><input type="checkbox" id="f-majorfree" /> 隐藏专业不符的岗位</label>
+      <label class="switch"><input type="checkbox" id="f-myCity" /> 只看我的意向城市</label>
+      <label class="switch"><input type="checkbox" id="f-noOverseas" /> 排除强制外派</label>
+      <label class="switch"><input type="checkbox" id="f-aimAt"> 只看对口岗位（含采购/供应链）</label>
+    </div>
+
+    <div class="activeline" id="active-filters"></div>
+    <div class="job-list" id="job-list"></div>
+    <div class="row" id="more-wrap" style="justify-content:center;margin:18px 0" hidden>
+      <button class="btn" id="btn-more">显示更多岗位</button>
+    </div>
+    <div class="empty" id="jobs-empty" hidden>
+      <div class="empty-ico">🗂️</div>
+      <h3>岗位池还是空的</h3>
+      <p>点右上角「找新岗位」，程序会去国聘、24365 这些公开官方渠道按你的求职方向搜索，并自动筛掉不相关的岗位。</p>
+      <button class="btn primary" id="btn-collect-2">找新岗位</button>
+    </div>
+  </section>
+
+  <section class="view" id="view-resume">
+    <div class="panel">
+      <h2>① 上传简历</h2>
+      <p class="muted">可以放多份简历（通用版 / 国际采购版 / 海外销售版…）。上传后每份简历单独设置「想找什么岗位」，找岗位时会分别匹配，并按最合适的那份来评分。</p>
+      <div class="form-grid">
+        <label>版本名称<input id="r-name" placeholder="如：通用版" /></label>
+        <label>适用方向<span class="checks" id="r-families"></span></label>
+        <label>选择文件<input id="r-file" type="file" accept=".pdf,.doc,.docx,.txt,.md" /></label>
+        <label class="inline"><input id="r-default" type="checkbox" /> 设为默认</label>
+      </div>
+      <button id="btn-upload" class="btn primary">上传并解析</button>
+      <p class="msg" id="r-msg"></p>
+    </div>
+    <div class="cards" id="resume-list"></div>
+    <div class="panel">
+      <h2>② 我的资料</h2>
+      <p class="muted">专业、学历、意向城市直接决定匹配度计算，也会影响「只看我的意向城市」这类筛选。勾上「退役大学生士兵」会优先匹配定向岗位。</p>
+      <div class="form-grid">
+        <label>姓名<input id="p-full_name" /></label>
+        <label>学校<input id="p-school" /></label>
+        <label>专业<input id="p-major" placeholder="填全称，用于判断岗位专业要求" /></label>
+        <label>学历<select id="p-degree">
+          <option value="">未填写</option><option>大专</option><option>本科</option><option>硕士</option><option>博士</option>
+        </select></label>
+        <label>毕业时间<input id="p-grad_date" placeholder="2027-06" /></label>
+        <label>政治面貌<select id="p-political">
+          <option value="">未填写</option><option>中共党员</option><option>中共预备党员</option>
+          <option>共青团员</option><option>群众</option>
+        </select></label>
+        <label>手机<input id="p-phone" /></label>
+        <label>邮箱<input id="p-email" /></label>
+        <label class="wide">意向城市（按优先级，逗号分隔）<input id="p-prefer_cities" /></label>
+        <label class="inline"><input id="p-veteran" type="checkbox" /> 退役大学生士兵</label>
+      </div>
+      <button id="btn-save-profile" class="btn primary">保存并重新计算匹配度</button>
+      <p class="msg" id="p-msg"></p>
+    </div>
+  </section>
+
+  <section class="view" id="view-apps">
+    <div class="panel">
+      <h2>投递记录</h2>
+      <p class="muted">只有拿到平台申请编号或确认邮件，才算「已投递」。找不到证据的状态会标成「未确认」，不会当成真的投过。</p>
+      <div id="apps-body"></div>
+    </div>
+  </section>
+
+  <section class="view" id="view-system">
+    <div class="panel">
+      <h2>后台任务</h2>
+      <p class="muted">找岗位、重新评分等操作都在后台跑，可以随时暂停或停止。关掉这个网页不影响任务继续。</p>
+      <div class="row">
+        <button class="btn primary" id="btn-task-collect">找新岗位</button>
+        <button class="btn" id="btn-task-analyze">重新计算匹配度</button>
+        <button class="btn ghost" id="btn-refresh">刷新</button>
+      </div>
+      <p class="msg" id="task-msg"></p>
+    </div>
+    <div class="task-list" id="task-list"></div>
+    <div class="panel" id="log-panel" hidden>
+      <h2 id="log-title">运行日志</h2>
+      <pre id="task-log"></pre>
+    </div>
+    <div class="panel">
+      <h2>数据来源与运行环境</h2>
+      <p class="muted">以下都是公开接口，不需要登录，也不会绕过验证码或平台限制。</p>
+      <div id="sys-info"></div>
+    </div>
+  </section>
+</main>
+
+<div class="drawer" id="drawer">
+  <div class="drawer-panel">
+    <button class="drawer-close" id="drawer-close">×</button>
+    <div id="drawer-body"></div>
+  </div>
+</div>
+
+<script src="/web/app.js"></script>
+</body>
+</html>
