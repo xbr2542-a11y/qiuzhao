@@ -42,6 +42,9 @@ FUNCTION_LABELS = {"procurement": "采购/寻源", "supply_chain": "供应链/�
 FUNCTION_TARGET_WORDS = {
     "procurement": ["采购", "寻源", "供应商", "sourcing", "procurement"],
     "supply_chain": ["供应链", "物流", "仓储", "库存", "计划", "关务", "报关", "单证"],
+    # "数据分析"也要算职能方向：否则简历写着要投数据岗，
+    # 遇到数据岗反而被判成"非销售岗位"给 0 分并挂风险标签。
+    "data": ["数据", "分析", "BI"],
 }
 
 DEGREE_RANK = {"中专": 1, "中技": 1, "高中": 1, "大专": 2, "专科": 2,

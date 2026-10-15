@@ -25,16 +25,25 @@ import db  # noqa: E402
 OUT = ROOT / "demo" / "data.json"
 JD_LIMIT = 420          # 岗位描述只保留前 N 个字符，控制体积
 
-# 每个方向抽多少条，保证演示里每类筛选都有东西可看
+# 每个方向抽多少条，保证演示里每类筛选都有东西可看。
+# 条件写全在每一行里，不再用一个全局 WHERE —— 因为"数据分析岗"会被
+# 「非销售岗位」规则整体标成 excluded，套上全局过滤就会一条都抽不到，
+# 演示里那一个筛选项就会是空的。
 PLAN = [
-    ("采购 / 寻源", "job_function = 'procurement'", 90),
-    ("供应链 / 物流", "job_function = 'supply_chain'", 90),
-    ("外贸 / 国际业务", "job_function = 'trade'", 90),
-    ("B端销售", "job_function = 'sales'", 90),
-    ("数据分析", "job_function = 'data'", 40),
-    ("央国企（其他职能）", "family = 'soe' AND job_function = 'other'", 70),
-    ("其他", "job_function = 'other'", 60),
+    ("采购 / 寻源", "job_function = 'procurement' AND review_status != 'excluded'", 90),
+    ("供应链 / 物流", "job_function = 'supply_chain' AND review_status != 'excluded'", 90),
+    ("外贸 / 国际业务", "job_function = 'trade' AND review_status != 'excluded'", 90),
+    ("B端销售", "job_function = 'sales' AND review_status != 'excluded'", 90),
+    # 数据岗照收（含被规则标为 excluded 的），这样演示里能看到复核状态的差异
+    ("数据分析", "family = 'data'", 45),
+    ("央国企（其他职能）", "family = 'soe' AND job_function = 'other' "
+                          "AND review_status != 'excluded'", 70),
+    ("其他", "job_function = 'other' AND review_status != 'excluded'", 60),
 ]
+
+# 公众号采集回来的"岗位"其实是推文标题（「校招 | 【某集团】招聘…五险一金!…」），
+# 放进演示里像广告。标题过长的直接不要。
+MAX_TITLE_LEN = 40
 
 JOB_COLUMNS = """
     id, company, title, city, source, family, url, deadline, major_req, major_tier,
@@ -52,7 +61,7 @@ def sample_jobs(conn) -> list[dict]:
     for _label, condition, limit in PLAN:
         rows = conn.execute(
             f"SELECT {JOB_COLUMNS} FROM jobs "
-            f"WHERE review_status != 'excluded' AND ({condition}) "
+            f"WHERE ({condition}) AND length(title) BETWEEN 2 AND {MAX_TITLE_LEN} "
             f"ORDER BY match_score DESC, id LIMIT ?", (limit,)).fetchall()
         for row in rows:
             job = dict(row)
@@ -123,7 +132,7 @@ DEMO_RESUMES = [
         "skills": ["Excel", "SQL", "Python", "Tableau", "Power BI", "数据分析"],
         "languages": ["英语", "CET-6"],
         "target_industries": [],
-        "target_job_types": ["技术销售"],
+        "target_job_types": ["数据分析", "技术销售"],
         "target_cities": ["北京", "深圳", "杭州", "上海"],
         "overseas_preference": "no_long_term",
     },

@@ -36,6 +36,37 @@ const FUNCTION_LABELS = {
   procurement: '采购/寻源', supply_chain: '供应链/物流', sales: '销售/商务',
   trade: '外贸/国际业务', data: '数据分析', other: '其他',
 };
+// 「对口优先」排序要用到的两组词，和 app/match.py 保持一致
+const JOB_TYPE_ALIASES = {
+  'B端解决方案销售': ['解决方案型B端销售', '销售支持（含开发职责）'],
+  '工业品销售': ['解决方案型B端销售'],
+  '海外销售': ['外贸BD销售'],
+  '外贸BD': ['外贸BD销售'],
+  '国际业务': ['外贸BD销售'],
+  '技术销售': ['解决方案型B端销售'],
+  '项目型销售': ['解决方案型B端销售'],
+  '商务拓展': ['解决方案型B端销售'],
+};
+const FUNCTION_TARGET_WORDS = {
+  procurement: ['采购', '寻源', '供应商', 'sourcing', 'procurement'],
+  supply_chain: ['供应链', '物流', '仓储', '库存', '计划', '关务', '报关', '单证'],
+  data: ['数据', '分析', 'BI'],
+};
+
+/** 岗位是否落在「简历里设过的目标方向」上。
+    以前这里判断的是一组写死的职能，等于没看简历——用户改求职意向，排序却纹丝不动。 */
+function isOnTarget(job) {
+  const targets = [];
+  (state.resumes || []).forEach((r) => (r.target_job_types || []).forEach((t) => targets.push(t)));
+  if (!targets.length) {
+    // 还没设过目标方向时，退回粗判断：是不是销售/职能类岗位
+    return ['procurement', 'supply_chain', 'sales', 'trade', 'data'].includes(job.job_function);
+  }
+  const words = FUNCTION_TARGET_WORDS[job.job_function];
+  if (words && targets.some((t) => words.some((w) => t.includes(w)))) return true;
+  const salesType = job.sales_type || '';
+  return targets.some((t) => (JOB_TYPE_ALIASES[t] || []).some((a) => salesType.includes(a)));
+}
 const OVERSEAS_PREF_LABELS = {
   unset: '未设置', no_long_term: '不接受长期境外外派', accept_short_term: '可接受短期外派',
   accept_travel: '可接受海外出差（不接受驻外）', accept_long_term: '可接受长期外派',
@@ -552,9 +583,8 @@ function applyFilters() {
         let value = 0;
         if (job.review_status === 'pending') value -= 40;
         if (job.review_status === 'excluded') value += 60;
-        if (['procurement', 'supply_chain', 'sales', 'trade', 'data'].includes(job.job_function)) {
-          value -= 25;
-        }
+        // 对口权重要压过"复核状态"，否则不对口但状态正常的岗位会顶上来
+        if (isOnTarget(job)) value -= 60;
         return value;
       };
       return (rank(a) - rank(b)) || ((b.match_score || 0) - (a.match_score || 0));

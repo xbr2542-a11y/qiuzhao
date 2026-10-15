@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>秋招管家 · 浏览器演示</title>
+<meta name="description" content="秋招管家：本地求职自动化工具。这是浏览器演示版——真实岗位抽样 + 前端实时筛选与多维度匹配打分。" />
+<link rel="stylesheet" href="demo/demo.css" />
+</head>
+<body>
+
+<header class="hero">
+  <div class="wrap">
+    <h1>秋招管家 · 浏览器演示</h1>
+    <p>
+      这是一个<b>真的能点</b>的演示：岗位来自公开渠道的真实抽样，筛选和匹配打分全部在这个页面里
+      实时计算——没有后端，也没有预先算好的结果。换个简历版本，所有分数都会重算。
+    </p>
+    <div class="hero-tags">
+      <span>岗位池按方向抽取 400+ 条</span>
+      <span>9 个匹配维度</span>
+      <span>切换简历实时重算</span>
+      <span>纯静态，手机可用</span>
+    </div>
+  </div>
+</header>
+
+<div class="wrap">
+
+  <div class="resume-picker">
+    <div class="label">用哪份简历评分</div>
+    <select id="resume-select" aria-label="选择简历版本"></select>
+    <div class="hint">
+      这四份是<b>虚构的示例简历</b>，不对应任何真实个人。切换它们，就能看到同一批岗位的匹配分怎么变。
+    </div>
+  </div>
+
+  <div class="stats" id="stats"></div>
+
+  <div class="chips" id="chips"></div>
+
+  <div class="filters" id="filters">
+    <label>岗位职能<select id="f-fn"></select></label>
+    <label>城市<select id="f-city"></select></label>
+    <label>学历<select id="f-degree"></select></label>
+    <label>类型<select id="f-jobtype"></select></label>
+    <label class="full">排序
+      <select id="f-sort">
+        <option value="smart">推荐（对口优先）</option>
+        <option value="score">只看匹配分</option>
+        <option value="deadline">截止时间最近</option>
+        <option value="salary">薪资从高到低</option>
+      </select>
+    </label>
+    <label class="switchline"><span>只看还能投的</span><input type="checkbox" id="f-open" /></label>
+    <label class="switchline"><span>隐藏专业不符的岗位</span><input type="checkbox" id="f-majorfree" /></label>
+    <button class="btn block" id="btn-reset">清空全部筛选</button>
+  </div>
+
+  <div class="active-filters" id="active-filters" style="display:none"></div>
+
+  <div class="job-list" id="jobs"></div>
+  <button class="btn block" id="more" style="display:none">显示更多</button>
+
+  <div class="demo-foot">
+    <div>
+      <b>关于数据</b><br>
+      岗位为公开渠道真实岗位的抽样快照，抓取时间 <span id="generated-at">—</span>。
+      简历为虚构示例。演示版不含简历上传、岗位采集、投递记录——那些需要本地运行。
+    </div>
+    <div>
+      <b>完整版</b><br>
+      <a href="https://github.com/xbr2542-a11y/qiuzhao">github.com/xbr2542-a11y/qiuzhao</a><br>
+      Python 标准库 + SQLite，零第三方依赖，全部数据留在本机。
+    </div>
+  </div>
+
+</div>
+
+<div class="drawer" id="drawer">
+  <div class="drawer-panel">
+    <button class="drawer-close" id="drawer-close" aria-label="关闭">×</button>
+    <div id="drawer-body"></div>
+  </div>
+</div>
+
+<script src="demo/demo.js"></script>
+</body>
+</html>
