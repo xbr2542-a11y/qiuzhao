@@ -42,16 +42,31 @@ GITHUB_IPS = [
 # 只有这些域名走"写死 IP"，其它一律正常解析，避免误伤。
 PINNED_HOSTS = {"github.com": GITHUB_IPS, "gist.github.com": GITHUB_IPS}
 
+# GitHub Pages 的地址段（和 github.com 不是同一批 IP，不能混用）。
+# 这台网络的 DNS 污染同样影响 *.github.io，所以自己也搭的 Pages 站会打不开。
+PAGES_IPS = ["185.199.108.153", "185.199.109.153", "185.199.110.153", "185.199.111.153"]
+PINNED_SUFFIXES = {".github.io": PAGES_IPS}
+
+
+def pinned_ips_for(host: str) -> list[str] | None:
+    """这个域名该用哪组写死的 IP；不需要绕行的返回 None。"""
+    if host in PINNED_HOSTS:
+        return PINNED_HOSTS[host]
+    for suffix, ips in PINNED_SUFFIXES.items():
+        if host.endswith(suffix):
+            return ips
+    return None
+
 PROBE_TIMEOUT = 3.0
 BUF = 65536
 CACHE_SECONDS = 120.0
 
 _lock = threading.Lock()
-_active_ip: str | None = None
-_checked_at = 0.0
+# 每个域名各缓存一个已验证的 IP：github.com 和 *.github.io 用的是不同的 IP 段
+_cache: dict[str, tuple[str, float]] = {}
 
 
-def tls_ok(ip: str) -> bool:
+def tls_ok(ip: str, host: str) -> bool:
     """真正做一次 TLS 握手来判断这个 IP 是否可用。
 
     为什么不用 TCP 探测：这台网络里有中间设备会对部分 IP "接受连接但重置
@@ -62,7 +77,7 @@ def tls_ok(ip: str) -> bool:
     context = ssl.create_default_context()
     try:
         with socket.create_connection((ip, 443), timeout=PROBE_TIMEOUT) as raw:
-            with context.wrap_socket(raw, server_hostname="github.com") as tls:
+            with context.wrap_socket(raw, server_hostname=host) as tls:
                 return tls.version() is not None
     except (OSError, ssl.SSLError):
         return False
@@ -70,25 +85,26 @@ def tls_ok(ip: str) -> bool:
 
 def pick_ip(host: str) -> str | None:
     """挑一个能完成 TLS 握手的 GitHub IP，结果缓存一会儿避免每次都探测。"""
-    global _active_ip, _checked_at
+    candidates = pinned_ips_for(host)
+    if not candidates:
+        return None
     with _lock:
-        fresh = _active_ip and (time.time() - _checked_at) < CACHE_SECONDS
-        if fresh:
-            return _active_ip
-        for ip in PINNED_HOSTS.get(host, []):
-            if tls_ok(ip):
-                _active_ip, _checked_at = ip, time.time()
+        cached = _cache.get(host)
+        if cached and (time.time() - cached[1]) < CACHE_SECONDS:
+            return cached[0]
+        for ip in candidates:
+            if tls_ok(ip, host):
+                _cache[host] = (ip, time.time())
                 print(f"[proxy] 使用 GitHub IP {ip}", flush=True)
                 return ip
-        _active_ip, _checked_at = None, 0.0
+        _cache.pop(host, None)
         return None
 
 
-def invalidate_ip() -> None:
+def invalidate_ip(host: str) -> None:
     """隧道出问题时清掉缓存，下一次连接重新探测。"""
-    global _active_ip, _checked_at
     with _lock:
-        _active_ip, _checked_at = None, 0.0
+        _cache.pop(host, None)
 
 
 def pipe(src: socket.socket, dst: socket.socket) -> None:
@@ -126,13 +142,13 @@ def handle(client: socket.socket) -> None:
         host, _, port_text = parts[1].partition(":")
         port = int(port_text or "443")
 
-        target_ip = pick_ip(host) if host in PINNED_HOSTS else None
+        target_ip = pick_ip(host)
         try:
             upstream = socket.create_connection((target_ip or host, port), timeout=15)
         except OSError:
             # 选中的 IP 连不上了：清缓存，换一个再试一次
             if target_ip:
-                invalidate_ip()
+                invalidate_ip(host)
                 retry_ip = pick_ip(host)
                 upstream = socket.create_connection(
                     (retry_ip or host, port), timeout=15)

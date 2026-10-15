@@ -160,15 +160,24 @@ body {
 
 .filters .full { grid-column: 1 / -1; }
 
-.switchline {
+/* 选择器必须写到 .filters 这一层：只写 .switchline 的话，
+   特异性(0,1,0) 会被上面的 .filters label(0,1,1) 压过去，
+   flex-direction: row 根本不生效，文字和开关会竖着堆起来。 */
+.filters .switchline {
   grid-column: 1 / -1;
   display: flex;
+  flex-direction: row;
   align-items: center;
   justify-content: space-between;
   gap: 10px;
   font-size: 13px;
   color: var(--ink-2);
   padding-top: 2px;
+}
+
+/* 手机上开关行并排两列，别把整行浪费掉 */
+@media (min-width: 520px) {
+  .filters .switchline { grid-column: span 2; }
 }
 
 .switchline input { width: 18px; height: 18px; }
